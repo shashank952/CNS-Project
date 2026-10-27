@@ -1,7 +1,8 @@
 import os
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 
+from api_errors import error_response
 from database import init_db
 from routes.history import history_bp
 from routes.keys import keys_bp
@@ -46,8 +47,31 @@ def create_app(test_config=None):
             413,
         )
 
+    frontend_dist = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+    )
+
+    @app.get("/")
+    @app.get("/<path:path>")
+    def serve_frontend(path=""):
+        if path == "api" or path.startswith("api/"):
+            return error_response("not_found", "Not found.", 404)
+
+        if not os.path.isdir(frontend_dist):
+            return error_response(
+                "not_found",
+                "The frontend build is missing. Run npm run build in frontend/.",
+                404,
+            )
+
+        candidate = os.path.join(frontend_dist, path)
+        if path and os.path.isfile(candidate):
+            return send_from_directory(frontend_dist, path)
+
+        return send_from_directory(frontend_dist, "index.html")
+
     return app
 
 
 if __name__ == "__main__":
-    create_app().run(host="127.0.0.1", port=5000)
+    create_app().run(host="127.0.0.1", port=5000, debug=False)
