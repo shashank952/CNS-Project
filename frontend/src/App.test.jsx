@@ -6,6 +6,15 @@ import App from './App.jsx'
 
 const originalFetch = globalThis.fetch
 
+const emptyData = {
+  total_signing_operations: 0,
+  total_verification_attempts: 0,
+  successful_verifications: 0,
+  failed_verifications: 0,
+  recent_activity: [],
+  records: [],
+}
+
 function renderApp() {
   return render(
     <MemoryRouter>
@@ -15,44 +24,18 @@ function renderApp() {
 }
 
 beforeEach(() => {
-  globalThis.fetch = vi.fn()
+  globalThis.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => emptyData,
+  })
 })
 
 afterEach(() => {
   globalThis.fetch = originalFetch
 })
 
-describe('dashboard health', () => {
-  test('shows backend healthy when the health check succeeds', async () => {
-    globalThis.fetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: 'ok' }),
-    })
-
-    renderApp()
-
-    expect(await screen.findByText(/backend healthy/i)).toBeInTheDocument()
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      '/api/health',
-      expect.any(Object),
-    )
-  })
-
-  test('shows backend unavailable when the health check fails', async () => {
-    globalThis.fetch.mockRejectedValue(new Error('offline'))
-
-    renderApp()
-
-    expect(await screen.findByText(/backend unavailable/i)).toBeInTheDocument()
-  })
-})
-
 describe('navigation', () => {
   test('sidebar links reach each page', async () => {
-    globalThis.fetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: 'ok' }),
-    })
     const user = userEvent.setup()
 
     renderApp()

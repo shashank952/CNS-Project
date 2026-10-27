@@ -21,47 +21,94 @@ h1 {
   color: var(--muted);
 }
 
-.status {
-  display: inline-block;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.healthy {
-  color: var(--success);
-  border-color: #bfd8c8;
-  background: #eef7f1;
-}
-
-.unavailable {
-  color: var(--danger);
-  border-color: #e3c4c4;
-  background: #fdf1f1;
-}
-
-.loading {
+.state {
+  margin: 24px 0;
   color: var(--muted);
 }
 
-.placeholder {
-  margin-top: 28px;
-  padding: 24px;
-  border: 1px dashed var(--border);
+.errorPanel {
+  max-width: 560px;
+  padding: 20px;
+  border: 1px solid #e3c4c4;
+  border-radius: 12px;
+  background: #fdf1f1;
+}
+
+.error {
+  margin: 0 0 12px;
+  color: var(--danger);
+}
+
+.retry {
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card {
+  padding: 20px;
+  border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface);
 }
 
-.placeholder h2 {
-  margin-bottom: 8px;
-  font-size: 1.05rem;
+.cardLabel {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
-.placeholder p {
-  max-width: 65ch;
-  margin-bottom: 0;
+.cardValue {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.quickActions a {
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.quickActions a:hover {
+  background: var(--accent-soft);
+}
+
+.recent h2 {
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+}
+
+.empty {
+  padding: 20px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--surface);
   color: var(--muted);
 }
+
+

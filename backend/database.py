@@ -74,3 +74,74 @@ def record_operation(
         )
         connection.commit()
         return cursor.lastrowid
+
+
+OPERATION_COLUMNS = (
+    "id, document_filename, operation_type, result, reason_code, "
+    "algorithm, document_sha256, created_at"
+)
+
+
+def list_operations(app, operation=None, result=None, limit=None):
+    query = f"SELECT {OPERATION_COLUMNS} FROM operations"
+    clauses = []
+    params = []
+
+    if operation is not None:
+        clauses.append("operation_type = ?")
+        params.append(operation)
+    if result is not None:
+        clauses.append("result = ?")
+        params.append(result)
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+
+    query += " ORDER BY id DESC"
+
+    if limit is not None:
+        query += " LIMIT ?"
+        params.append(limit)
+
+    with closing(connect(app)) as connection:
+        rows = connection.execute(query, params).fetchall()
+
+    return [dict(row) for row in rows]
+
+
+def delete_operations(app):
+    with closing(connect(app)) as connection:
+        cursor = connection.execute("DELETE FROM operations")
+        connection.commit()
+        return cursor.rowcount
+
+
+def dashboard_stats(app):
+    with closing(connect(app)) as connection:
+        counts = connection.execute(
+            """
+            SELECT
+                COALESCE(SUM(operation_type = 'sign'), 0)
+                    AS total_signing_operations,
+                COALESCE(SUM(operation_type = 'verify'), 0)
+                    AS total_verification_attempts,
+                COALESCE(
+                    SUM(operation_type = 'verify' AND result = 'success'), 0
+                ) AS successful_verifications,
+                COALESCE(
+                    SUM(operation_type = 'verify' AND result = 'failure'), 0
+                ) AS failed_verifications
+            FROM operations
+            """
+        ).fetchone()
+        recent = connection.execute(
+            f"SELECT {OPERATION_COLUMNS} FROM operations "
+            "ORDER BY id DESC LIMIT 10"
+        ).fetchall()
+
+    return {
+        "total_signing_operations": counts["total_signing_operations"],
+        "total_verification_attempts": counts["total_verification_attempts"],
+        "successful_verifications": counts["successful_verifications"],
+        "failed_verifications": counts["failed_verifications"],
+        "recent_activity": [dict(row) for row in recent],
+    }
