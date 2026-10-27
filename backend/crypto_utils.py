@@ -1,8 +1,9 @@
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 KEY_SIZE = 2048
 PUBLIC_EXPONENT = 65537
+ALGORITHM = "RSA-PSS-SHA256"
 
 
 def generate_key_pair():
@@ -11,6 +12,17 @@ def generate_key_pair():
         key_size=KEY_SIZE,
     )
     return private_key, private_key.public_key()
+
+
+def sign_document(private_key, document_bytes):
+    return private_key.sign(
+        document_bytes,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH,
+        ),
+        hashes.SHA256(),
+    )
 
 
 def serialize_private_key(private_key, password=None):
