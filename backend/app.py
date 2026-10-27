@@ -1,8 +1,11 @@
 from flask import Flask, jsonify
 
+from routes.keys import keys_bp
+
 
 def create_app():
     app = Flask(__name__)
+    app.register_blueprint(keys_bp)
 
     @app.get("/api/health")
     def health():
