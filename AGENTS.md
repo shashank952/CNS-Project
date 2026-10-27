@@ -4,7 +4,7 @@
 
 - The workspace contains a React/Vite frontend and a Flask backend. `plan.txt` remains the authoritative product and security specification; `CONTEXT.md` is the domain glossary; `docs/adr/` records hard-to-reverse decisions.
 - Work is tracked as local markdown under `.scratch/digital-signature-system/`: `spec.md` is the buildable spec, and `issues/` holds tracer-bullet tickets with `Blocked by` edges. Work the unblocked frontier; do not skip a blocker.
-- Tickets 01 (walking skeleton), 02 (key generation), 03 (signing), 04 (verification), 05 (history and dashboard), and 06 (tamper demonstration) are complete. Ticket 07 (end-to-end hardening and delivery) remains. Do not replace real signing or verification with mocks.
+- All seven tickets are complete. The delivered app is documented in `README.md`, with the final report in `REPORT.md`. Do not replace real signing or verification with mocks.
 
 ## Commands
 
@@ -19,6 +19,7 @@ Verified on Windows PowerShell 5.1 with Python 3.12.10, Node 24.19.0, and npm 11
 - Single frontend test: `npx vitest run src/App.test.jsx`
 - Frontend dev server: `npm run dev` (port 5173, proxies `/api` to 127.0.0.1:5000)
 - Frontend build: `npm run build`
+- Single-origin demo: `cd frontend; npm run build; cd ..; backend\.venv\Scripts\python.exe backend\app.py` (port 5000)
 
 No lint or typecheck script is configured yet.
 
