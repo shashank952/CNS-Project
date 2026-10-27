@@ -107,13 +107,212 @@ backend\.venv\Scripts\python.exe backend\app.py
 
 Open <http://127.0.0.1:5000>. Client-side routes such as `/sign` fall back to `index.html`; unknown `/api/...` paths return JSON 404. If the build is missing, `/` returns a JSON error telling you to run `npm run build`.
 
-## Workflow
+## Step-by-step usage
 
-1. **Key Management** (`/keys`) — generate an RSA-2048 Key Pair, optionally enter a Password, download `rsa-keypair.zip`, and extract `public.pem` and `private.pem`.
-2. **Generate Signature** (`/sign`) — upload a PDF or TXT Document, the `private.pem`, and the Password if it is encrypted. Download the `.sig` file.
-3. **Verify Signature** (`/verify`) — upload the same Document, the `.sig`, and `public.pem`. The backend returns Valid or Invalid.
-4. **Tamper demonstration** (`/verify`, TXT only) — edit the prefilled text and re-verify against the same `.sig`; Invalid is expected and recorded.
-5. **Dashboard and History** (`/`, `/history`) — inspect counts, recent activity, filters, and clear history after confirmation.
+### Before you start
+
+- **Single-origin demo:** <http://127.0.0.1:5000> — Flask serves the built frontend and the API.
+- **Development:** <http://localhost:5173> — Vite proxies `/api` to Flask.
+- There is no login; the application runs entirely on this machine.
+- If a page reports “The backend is unavailable,” restart the backend using [Stop and restart](#stop-and-restart).
+
+### 1. Create a test document
+
+Create a TXT file on your Desktop:
+
+```powershell
+Set-Content -LiteralPath "$env:USERPROFILE\Desktop\sample.txt" -Value "Hello from the digital signature demo." -NoNewline
+```
+
+For PDF testing, use any real PDF already on the machine. Keep the original files unchanged; the signature is bound to their exact bytes.
+
+### 2. Generate a Key Pair
+
+1. Open **Key Management** (`/keys`).
+2. Optionally enter a **Password**.
+   - A Password encrypts `private.pem`.
+   - If you leave it blank, the page shows an unencrypted-export warning.
+3. Click **Generate key pair**.
+4. Wait for **Key pair ready**.
+5. Click **Download key pair (.zip)**.
+6. Extract `rsa-keypair.zip`:
+   - `public.pem` — safe to share; used for verification.
+   - `private.pem` — secret; used for signing.
+
+**Expected result:** a ZIP containing both PEM files. If you supplied a Password, `private.pem` is encrypted.
+
+The server does not store the Private Key. If you lose it or forget its Password, you cannot sign with that Key Pair again.
+
+### 3. Sign a TXT Document
+
+1. Open **Generate Signature** (`/sign`).
+2. Upload `sample.txt` as the **Document**.
+3. Upload `private.pem` as the **Private Key**.
+4. Enter the **Password** only if the Private Key is encrypted.
+5. Click **Sign Document**.
+6. Wait for **Signature created**.
+
+The success panel shows the filename, size, SHA-256 fingerprint, algorithm (`RSA-PSS-SHA256`), and signing timestamp.
+
+7. Click **Download signature (`sample.sig`)**.
+
+**Expected result:** `sample.sig` in the browser's Downloads folder.
+
+RSA-PSS is randomized, so signing the same Document twice produces different `.sig` files that both verify.
+
+### 4. Verify the Document
+
+1. Open **Verify Signature** (`/verify`).
+2. Upload:
+   - **Document:** `sample.txt`
+   - **Signature Artifact:** `sample.sig`
+   - **Public Key:** `public.pem`
+3. Click **Verify Signature**.
+
+**Expected result:** a green **Valid** panel with:
+
+- “The Signature Artifact matches the Document and Public Key.”
+- The Document Fingerprint.
+- The verification timestamp.
+
+The backend performs the cryptographic check. The browser never decides validity.
+
+### 5. Demonstrate tampering
+
+1. On `/verify`, select a TXT Document.
+2. A **Tamper demonstration** box appears, prefilled with the Document text.
+3. Change one character — for example, `Hello` to `Jello`.
+4. Click **Tamper & re-verify**.
+
+**Expected result:** a red **Invalid** panel. The explanation lists all possible causes: the Document may have changed, or the Signature Artifact or Public Key may be wrong. RSA-PSS cannot distinguish them.
+
+The attempt is recorded in History.
+
+5. Click **Verify another** to reset the form.
+
+If the TXT file is not valid UTF-8, the editor is disabled with an explanation. PDFs never show the editor.
+
+### 6. Demonstrate a wrong Public Key
+
+1. Return to **Key Management** and generate a second Key Pair.
+2. Extract its `public.pem`.
+3. Open `/verify`.
+4. Upload the original `sample.txt`, the original `sample.sig`, and the **second** Key Pair's `public.pem`.
+5. Click **Verify Signature**.
+
+**Expected result:** **Invalid**, with the same `verification_failed` explanation.
+
+Use the first Key Pair's `public.pem` again to see **Valid**.
+
+### 7. Sign and verify a PDF
+
+1. On `/sign`, upload a PDF and your `private.pem`.
+2. Enter the Password if needed, then click **Sign Document**.
+3. Download the generated `<pdf-name>.sig`.
+4. On `/verify`, upload the PDF, its `.sig`, and `public.pem`.
+
+**Expected result:** **Valid**.
+
+PDFs do not get a tamper editor. To test an altered PDF, modify or replace the PDF itself and verify it against the original signature.
+
+### 8. Use an encrypted Private Key
+
+1. On `/keys`, enter a Password before generating.
+2. On `/sign`, upload the encrypted `private.pem` and enter the same Password.
+
+Signing succeeds. Test the failure cases:
+
+- Omit the Password → “The Private Key is encrypted; a Password is required.”
+- Enter the wrong Password → “The Private Key could not be decrypted. Check the Password.”
+
+If the Private Key is unencrypted, a Password typed on the signing form is ignored.
+
+### 9. Read the Dashboard
+
+Open `/`. The four cards mean:
+
+| Card | Meaning |
+| --- | --- |
+| Total signing operations | Successful signings recorded |
+| Total verification attempts | Completed verifications, Valid or Invalid |
+| Successful verifications | Verification Attempts that were Valid |
+| Failed verifications | Verification Attempts that were Invalid |
+
+Below the cards:
+
+- **Quick actions** link to signing, verification, and key management.
+- **Recent activity** shows the ten newest Operation Records.
+
+With no records, the Dashboard shows zeros and an empty-state message.
+
+### 10. Use Activity History
+
+Open `/history`.
+
+1. **Operation** filter: All, Sign, or Verify.
+2. **Result** filter: All, Success, or Failure.
+3. **Refresh** reloads the records.
+4. **Clear history** opens a confirmation panel.
+5. **Cancel** closes it without deleting.
+6. **Delete all records** permanently removes every Operation Record.
+
+Behaviour:
+
+- Records are newest first.
+- Filters combine, for example Verify + Failure.
+- Clearing history also resets the Dashboard counts.
+- Successful signings and completed verifications are recorded; rejected 4xx requests are not.
+- History stores metadata only — no keys, Passwords, or document contents.
+
+### 11. Stop and restart
+
+Stop whichever servers are listening on ports 5000 and 5173:
+
+```powershell
+Get-NetTCPConnection -LocalPort 5000,5173 -State Listen -ErrorAction SilentlyContinue |
+  ForEach-Object { taskkill /PID $_.OwningProcess /T /F }
+```
+
+Restart the single-origin demo:
+
+```powershell
+cd frontend
+npm run build
+cd ..
+backend\.venv\Scripts\python.exe backend\app.py
+```
+
+Open <http://127.0.0.1:5000>.
+
+Restart development mode:
+
+```powershell
+# Terminal 1, from the repository root
+backend\.venv\Scripts\python.exe backend\app.py
+
+# Terminal 2, from the repository root
+cd frontend
+npm run dev
+```
+
+Open <http://localhost:5173>.
+
+### 12. Common errors
+
+| Symptom | Cause / fix |
+| --- | --- |
+| “The backend is unavailable” | Start the Flask server on port 5000 |
+| “The Private Key is encrypted; a Password is required” | Enter the Password used when generating the key |
+| “The Private Key could not be decrypted” | Wrong Password |
+| “The Private Key must be an RSA-2048 PEM file” | Wrong file, malformed PEM, or non-2048 key |
+| “The Public Key must be an RSA-2048 PEM file” | Wrong key or non-RSA key |
+| “Only PDF and TXT Documents are supported” | Unsupported file extension |
+| “The uploaded PDF is not a valid PDF file” | Missing `%PDF-` header or renamed non-PDF |
+| “The Signature Artifact is empty” | Empty `.sig` file |
+| **Invalid** result | Document changed, wrong `.sig`, or wrong `public.pem` |
+| Port already in use | Stop the old server processes, then restart |
+
+For direct HTTP calls, see [API](#api). Upload limits are listed under [Upload limits](#upload-limits), and security constraints under [Security](#security).
 
 ## API
 
