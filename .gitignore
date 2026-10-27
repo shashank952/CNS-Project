@@ -1,0 +1,33 @@
+# Secrets and keys
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+# Database and uploads
+*.db
+*.sqlite
+*.sqlite3
+instance/
+uploads/
+*.sig
+
+# Tool state and logs
+.omo/
+.codegraph/
+*.log
+*.tmp
+tmp/
+.DS_Store
