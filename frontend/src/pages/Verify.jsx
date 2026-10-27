@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import styles from './Verify.module.css'
 
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
@@ -7,6 +7,7 @@ const MAX_KEY_BYTES = 64 * 1024
 const ALLOWED_EXTENSIONS = ['pdf', 'txt']
 
 export default function Verify() {
+  const tamperRequest = useRef(0)
   const [formKey, setFormKey] = useState(0)
   const [documentFile, setDocumentFile] = useState(null)
   const [signatureFile, setSignatureFile] = useState(null)
@@ -14,6 +15,102 @@ export default function Verify() {
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
+  const [tamper, setTamper] = useState({
+    status: 'none',
+    text: '',
+    error: '',
+  })
+
+  async function handleDocumentChange(event) {
+    const file = event.target.files?.[0] ?? null
+    setDocumentFile(file)
+    setResult(null)
+    setError('')
+    setStatus('idle')
+
+    const requestId = tamperRequest.current + 1
+    tamperRequest.current = requestId
+
+    if (!file) {
+      setTamper({ status: 'none', text: '', error: '' })
+      return
+    }
+
+    const extension = file.name.split('.').pop()?.toLowerCase()
+    if (extension !== 'txt') {
+      setTamper({ status: 'none', text: '', error: '' })
+      return
+    }
+
+    setTamper({ status: 'loading', text: '', error: '' })
+
+    try {
+      // `fatal` rejects non-UTF-8; `ignoreBOM` preserves a BOM on re-encode.
+      const buffer = await file.arrayBuffer()
+      const text = new TextDecoder('utf-8', {
+        fatal: true,
+        ignoreBOM: true,
+      }).decode(buffer)
+
+      if (tamperRequest.current !== requestId) {
+        return
+      }
+
+      setTamper({ status: 'ready', text, error: '' })
+    } catch {
+      if (tamperRequest.current !== requestId) {
+        return
+      }
+
+      setTamper({
+        status: 'unavailable',
+        text: '',
+        error:
+          'This TXT Document is not valid UTF-8, so it cannot be edited here. You can still verify the original file.',
+      })
+    }
+  }
+
+  function requireSupportingFiles() {
+    if (!signatureFile) {
+      setStatus('error')
+      setError('Choose the Signature Artifact (.sig).')
+      return false
+    }
+
+    if (!publicKeyFile) {
+      setStatus('error')
+      setError('Choose the Public Key PEM file.')
+      return false
+    }
+
+    return true
+  }
+
+  async function submitVerification(formData) {
+    setStatus('verifying')
+    setError('')
+
+    try {
+      const response = await fetch('/api/verify', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        throw new Error(
+          body?.error?.message || 'Could not verify the Signature Artifact.',
+        )
+      }
+
+      setResult(await response.json())
+      setStatus('success')
+    } catch (err) {
+      setError(err.message)
+      setStatus('error')
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -26,15 +123,7 @@ export default function Verify() {
       return
     }
 
-    if (!signatureFile) {
-      setStatus('error')
-      setError('Choose the Signature Artifact (.sig).')
-      return
-    }
-
-    if (!publicKeyFile) {
-      setStatus('error')
-      setError('Choose the Public Key PEM file.')
+    if (!requireSupportingFiles()) {
       return
     }
 
@@ -63,41 +152,48 @@ export default function Verify() {
       return
     }
 
-    setStatus('verifying')
+    const formData = new FormData()
+    formData.append('document', documentFile)
+    formData.append('signature', signatureFile)
+    formData.append('public_key', publicKeyFile)
 
-    try {
-      const formData = new FormData()
-      formData.append('document', documentFile)
-      formData.append('signature', signatureFile)
-      formData.append('public_key', publicKeyFile)
+    await submitVerification(formData)
+  }
 
-      const response = await fetch('/api/verify', {
-        method: 'POST',
-        body: formData,
-      })
+  async function handleTamperVerify() {
+    setError('')
+    setResult(null)
 
-      if (!response.ok) {
-        const body = await response.json().catch(() => null)
-        throw new Error(
-          body?.error?.message || 'Could not verify the Signature Artifact.',
-        )
-      }
-
-      setResult(await response.json())
-      setStatus('success')
-    } catch (err) {
-      setError(err.message)
-      setStatus('error')
+    if (!requireSupportingFiles()) {
+      return
     }
+
+    if (!documentFile || tamper.status !== 'ready') {
+      setStatus('error')
+      setError('Choose a PDF or TXT Document.')
+      return
+    }
+
+    const editedDocument = new File([tamper.text], documentFile.name, {
+      type: 'text/plain',
+    })
+    const formData = new FormData()
+    formData.append('document', editedDocument)
+    formData.append('signature', signatureFile)
+    formData.append('public_key', publicKeyFile)
+
+    await submitVerification(formData)
   }
 
   function handleReset() {
+    tamperRequest.current += 1
     setDocumentFile(null)
     setSignatureFile(null)
     setPublicKeyFile(null)
     setError('')
     setResult(null)
     setStatus('idle')
+    setTamper({ status: 'none', text: '', error: '' })
     setFormKey((value) => value + 1)
   }
 
@@ -120,9 +216,7 @@ export default function Verify() {
             id="verify-document"
             type="file"
             accept=".pdf,.txt"
-            onChange={(event) =>
-              setDocumentFile(event.target.files?.[0] ?? null)
-            }
+            onChange={handleDocumentChange}
           />
         </div>
 
@@ -164,6 +258,53 @@ export default function Verify() {
           </p>
         )}
       </form>
+
+      {tamper.status === 'loading' && (
+        <p className={styles.state} role="status">
+          Reading Document…
+        </p>
+      )}
+
+      {tamper.status === 'unavailable' && (
+        <p className={styles.warning} role="note">
+          {tamper.error}
+        </p>
+      )}
+
+      {tamper.status === 'ready' && (
+        <section className={styles.tamper} aria-labelledby="tamper-heading">
+          <h2 id="tamper-heading">Tamper demonstration</h2>
+          <p className={styles.tamperIntro}>
+            Change one character, then re-verify the edited text against the
+            same Signature Artifact and Public Key.
+          </p>
+
+          <div className={styles.field}>
+            <label htmlFor="tamper-text">Tamper text</label>
+            <textarea
+              id="tamper-text"
+              className={styles.textarea}
+              rows={8}
+              value={tamper.text}
+              onChange={(event) =>
+                setTamper((current) => ({
+                  ...current,
+                  text: event.target.value,
+                }))
+              }
+            />
+          </div>
+
+          <button
+            type="button"
+            className={styles.button}
+            onClick={handleTamperVerify}
+            disabled={status === 'verifying'}
+          >
+            {status === 'verifying' ? 'Verifying…' : 'Tamper & re-verify'}
+          </button>
+        </section>
+      )}
 
       {status === 'success' && result && (
         <section
