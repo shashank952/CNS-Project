@@ -1,0 +1,652 @@
+# Agentix Implementation Plan: Digital Signature Generation and Verification System
+
+This plan is designed to be given directly to the Agentix coding agent. It defines the project requirements, architecture, development phases, implementation tasks, security rules, testing strategy, and completion criteria.
+
+The agent should build a complete, working course project, not just generate a UI or a collection of code files. It should implement and test each phase before proceeding to the next.
+
+## 1. Project definition
+
+Project title
+
+Digital Signature Generation and Verification System
+
+Project type
+
+Full-stack web application
+
+Difficulty
+
+Intermediate course project
+
+Estimated duration
+
+Approximately 7–10 development days
+
+Primary objective
+
+Generate digital signatures for documents and verify their authenticity and integrity using public-key cryptography.
+
+### Problem statement
+
+- Documents exchanged digitally can be modified without obvious visible signs.
+- A recipient needs a reliable way to check whether a document matches the data originally signed.
+- The application will use digital signatures to verify the integrity of a document and its relationship to a particular public-private key pair.
+- The application should demonstrate the process through a simple, understandable interface.
+
+### Project objectives
+
+- Generate RSA public-private key pairs.
+- Allow users to sign documents using a private key.
+- Allow users to verify signatures using a public key.
+- Detect document modifications.
+- Allow users to download and reuse signature and key files.
+- Maintain a basic history of signing and verification activities.
+- Explain cryptographic operations through a clean dashboard.
+
+## 2. Technology stack
+
+Agentix must use this stack unless a genuine compatibility issue requires a documented alternative.
+
+| Layer                 | Technology                                     |
+| --------------------- | ---------------------------------------------- |
+| Frontend              | React + Vite                                   |
+| Language              | JavaScript                                     |
+| Styling               | CSS modules or organized standard CSS          |
+| Backend               | Python + Flask                                 |
+| Cryptographic library | Python `cryptography`                          |
+| Signature algorithm   | RSA-2048 + RSA-PSS                             |
+| Hash algorithm        | SHA-256                                        |
+| Database              | SQLite                                         |
+| API communication     | REST API with JSON and multipart file uploads  |
+| Frontend routing      | React Router                                   |
+| Testing               | Pytest for backend; appropriate frontend tests |
+| Version control       | Git                                            |
+
+Avoid introducing Docker, Redis, PostgreSQL, microservices, cloud infrastructure, blockchain, or AI features. They are unnecessary for this version.
+
+## 3. Functional requirements
+
+Agentix must implement the following features.
+
+### Module A — Dashboard
+
+- Create a home page that explains what the system does.
+- Display summary cards:
+  - Total signing operations.
+  - Total verification attempts.
+  - Successful verifications.
+  - Failed verifications.
+- Show recent activity with document name, operation, timestamp, and result.
+- Provide navigation to the signing, verification, key management, and history pages.
+- Display useful empty states when no activity exists.
+- Fetch summary values from the backend instead of using hardcoded numbers.
+
+### Module B — RSA key management
+
+- Generate an RSA key pair using the `cryptography` library.
+- Use a key size of 2048 bits.
+- Export the private key in PEM format.
+- Export the public key in PEM format.
+- Allow the user to download both keys separately.
+- Use an encrypted private-key export protected by a password where supported.
+- Never expose the private key through logs, the dashboard, API responses, or the database.
+- Never automatically regenerate a key when the user selects an existing key for signing or verification.
+- Provide clear instructions explaining that the private key signs documents and the public key verifies signatures.
+
+Key management design decision:
+
+- Do not create a full account system or centralized key vault.
+- Generate the keys locally on the backend for the course demonstration.
+- Return downloadable key files through a controlled response.
+- Keep private-key material out of persistent server storage by default.
+- Allow users to provide an existing private key for signing and a public key for verification.
+- If a private key is encrypted, require the corresponding password when loading it.
+
+### Module C — Document signing
+
+- Support PDF and TXT files.
+- Accept a document upload and a private-key PEM file.
+- Provide an optional password field for an encrypted private key.
+- Validate the file and private key before processing.
+- Read the complete original document as bytes.
+- Generate a digital signature using RSA-PSS with SHA-256.
+- Produce a downloadable `.sig` file.
+- Display:
+  - Document name.
+  - Document size.
+  - SHA-256 fingerprint of the document.
+  - Signature algorithm.
+  - Signature generation timestamp.
+  - Signing result.
+- Display the file download controls after successful signing.
+- Record the operation in the database without storing the private key or the entire document.
+
+### Module D — Signature verification
+
+- Accept three inputs:
+  - Original document.
+  - Signature file.
+  - Public-key PEM file.
+- Read the original document bytes without changing them.
+- Load and validate the public key.
+- Verify the signature using the same RSA-PSS and SHA-256 parameters used during signing.
+- Return a valid or invalid result.
+- Display a clear reason or category for failure where possible:
+  - Document or signature mismatch.
+  - Incorrect public key.
+  - Invalid signature format.
+  - Invalid public-key format.
+  - Missing input.
+- Handle verification failure as a normal application result, not as a server crash.
+- Record the result in the verification history.
+
+Important: The application must never trust the filename, the displayed hash, or information supplied by the frontend as proof of validity. The backend must perform the actual cryptographic verification.
+
+### Module E — Document integrity demonstration
+
+This is an important feature for demonstrating the project during evaluation.
+
+- Provide an optional way to edit or modify a TXT document for testing.
+- Alternatively, allow the user to upload a modified copy of a previously signed file.
+- Verify the modified file against the original signature.
+- Display an invalid result.
+- Explain that even a small change to the signed bytes invalidates the signature, except with a negligible cryptographic probability of a collision or successful forgery.
+
+This feature can be implemented with a small demonstration panel; it does not require a separate document editor.
+
+### Module F — Activity history
+
+- Store signing and verification records in SQLite.
+- Store only the information necessary for the activity log:
+  - Record ID.
+  - Document filename.
+  - Operation type.
+  - Timestamp.
+  - Result.
+  - Algorithm used.
+  - Optional document SHA-256 fingerprint.
+- Do not store private keys, passwords, or uploaded document contents.
+- Provide a history table with sorting by most recent activity.
+- Support filtering by operation type and result.
+- Include a clear-history function with confirmation.
+- Make the dashboard summary cards reflect the stored records.
+
+## 4. Non-functional requirements
+
+- The application must run locally on Windows 11.
+- Frontend and backend must be independently startable.
+- The frontend must communicate with the backend through documented API endpoints.
+- The interface must be responsive on desktop and mobile screens.
+- API errors must produce readable messages.
+- The application must not expose stack traces to end users.
+- Cryptographic operations must use established library implementations.
+- Uploaded files must be validated and size-limited.
+- SQLite operations must use parameterized queries.
+- No API key, private key, or password may be committed to Git.
+- The project must include installation instructions and automated tests.
+- The system must work without an external paid service or internet API.
+
+## 5. Application architecture
+
+Use a simple three-part architecture.
+
+React frontend
+
+Pages, forms, file uploads, results, history
+
+Flask REST API
+
+Validation, signing, verification, error handling
+
+Crypto module
+
+RSA, RSA-PSS, SHA-256
+
+SQLite
+
+Activity history and statistics
+
+### Backend responsibilities
+
+- Validate all uploaded files and cryptographic inputs.
+- Perform signing and verification.
+- Generate key pairs and serialize them securely.
+- Return signature files and key files as downloads.
+- Record operation metadata in SQLite.
+- Return consistent JSON errors.
+- Keep cryptographic code separate from HTTP route handlers.
+
+### Frontend responsibilities
+
+- Display forms and navigation.
+- Validate required fields before submission.
+- Send files to the backend.
+- Display signing and verification results returned by the backend.
+- Trigger downloads for generated files.
+- Load history and summary statistics.
+- Never implement or simulate cryptographic verification in JavaScript.
+
+### Database responsibilities
+
+- Store operation metadata only.
+- Provide history, filtering, and dashboard statistics.
+- Use database initialization that works on the first application launch.
+- Handle an empty database without errors.
+
+## 6. API specification
+
+Agentix should implement these endpoints and keep their behavior consistent.
+
+| Method and endpoint        | Input                                        | Expected output                                                     |
+| -------------------------- | -------------------------------------------- | ------------------------------------------------------------------- |
+| `GET /api/health`          | None                                         | API health status                                                   |
+| `POST /api/keys/generate`  | Optional key password or export option       | Public and private key downloads, or controlled download references |
+| `POST /api/sign`           | Document, private key, optional key password | Signature file and signing metadata                                 |
+| `POST /api/verify`         | Document, `.sig` file, public key            | Verification status and reason category                             |
+| `GET /api/history`         | Optional filters                             | List of operation records                                           |
+| `DELETE /api/history`      | None                                         | Confirmation of history deletion                                    |
+| `GET /api/dashboard/stats` | None                                         | Summary counts and recent activity                                  |
+
+The key-generation endpoint may return a ZIP containing the PEM files, or provide separate downloads. Choose the simplest secure implementation.
+
+### API response conventions
+
+For signing:
+
+- Return a successful HTTP response only after signature generation completes.
+- Include the document fingerprint, algorithm, and operation ID in response metadata.
+- Return the signature as a downloadable file or a correctly encoded payload.
+- Do not return the private key in the signing response.
+
+For verification:
+
+- Return `valid: true` for successful verification.
+- Return `valid: false` for an ordinary failed verification.
+- Include a machine-readable reason category and a user-friendly message.
+- Use appropriate HTTP error codes for malformed requests or server failures.
+
+For all endpoints:
+
+- Validate required fields.
+- Enforce upload-size limits.
+- Use consistent response formats.
+- Avoid exposing internal exceptions or sensitive file paths.
+
+## 7. Cryptography implementation rules
+
+This section is mandatory because incorrect cryptographic implementation could make the application appear functional while failing to provide real security.
+
+- Use `cryptography.hazmat.primitives.asymmetric.rsa` for RSA.
+- Generate a 2048-bit RSA key pair.
+- Use public exponent `65537`.
+- Use RSA-PSS for signatures.
+- Use SHA-256 as the message digest.
+- Use MGF1 with SHA-256 for RSA-PSS.
+- Use `PSS.MAX_LENGTH` as the salt length, consistently in both signing and verification.
+- Sign the original document bytes directly through the library's signing API.
+- Do not manually implement RSA, SHA-256, padding, or signature verification.
+- Do not sign the filename, file path, or a hash string displayed by the frontend instead of the actual document bytes.
+- Do not use a normal RSA encryption operation as a substitute for digital signing.
+- Do not compare signatures byte-for-byte to determine validity; RSA-PSS can generate different valid signatures for the same document.
+- Do not treat a matching document hash alone as proof of authenticity.
+
+### Key export
+
+- Export private keys in PEM format using PKCS#8 serialization.
+- Prefer encrypted private-key export using a password-based encryption option provided by the library.
+- Export public keys in PEM SubjectPublicKeyInfo format.
+- Validate imported key types and supported key sizes.
+- Never log passwords or key material.
+- Avoid keeping temporary key files after their purpose is complete.
+
+## 8. Frontend page-by-page implementation
+
+Agentix should build the UI after the cryptographic module and backend APIs are working.
+
+### Page 1 — Dashboard
+
+Required components:
+
+- Sidebar navigation.
+- Application title and short description.
+- Summary cards for signing and verification statistics.
+- Recent activity table.
+- Quick-action buttons:
+  - Generate Signature.
+  - Verify Signature.
+  - Manage Keys.
+- Loading indicators while fetching data.
+- Empty state for a new installation.
+- Error state if the backend is unavailable.
+
+### Page 2 — Generate Signature
+
+Required components:
+
+- Document upload area supporting PDF and TXT.
+- Private-key upload control.
+- Password field for encrypted private keys.
+- Selected file details.
+- Sign Document button.
+- Signing progress indicator.
+- Success panel containing the algorithm and document fingerprint.
+- Download Signature button.
+- Clear form button.
+
+Validation:
+
+- The document and private key must be supplied.
+- The file must be within the configured size limit.
+- Invalid keys must be rejected with an understandable message.
+- The signature download must only become available after successful signing.
+
+### Page 3 — Verify Signature
+
+Required components:
+
+- Document upload.
+- Signature upload.
+- Public-key upload.
+- Verify Signature button.
+- Loading indicator.
+- Result panel with a clear valid or invalid status.
+- Reason for failure when available.
+- Document fingerprint for reference.
+- Option to perform another verification.
+
+The result panel must use the actual backend response. Never display a successful verification result before the backend confirms it.
+
+### Page 4 — Key Management
+
+Required components:
+
+- Generate Key Pair button.
+- RSA key-size information.
+- Public-key download.
+- Private-key download.
+- Password-protected private-key export.
+- Security guidance explaining how to store keys.
+- Instructions for reusing previously downloaded keys.
+
+The interface should not display the full private key or store it in browser local storage.
+
+### Page 5 — Activity History
+
+Required components:
+
+- Table with document name, operation, date, and result.
+- Filter by signing or verification.
+- Filter by successful or failed result.
+- Empty state.
+- Clear History button.
+- Confirmation dialog before clearing records.
+- Refresh functionality.
+
+### Navigation and visual design
+
+- Use a consistent sidebar across all pages.
+- Keep the interface clean and suitable for an academic demonstration.
+- Use a limited color palette, readable typography, and consistent spacing.
+- Use status colors consistently for successful and failed operations.
+- Make forms keyboard-accessible and provide visible labels.
+- Use responsive layouts rather than fixed-width pages.
+- Avoid unnecessary animations, complex charts, decorative elements, and excessive gradients.
+
+## 9. Recommended project structure
+
+Agentix should create and maintain the following structure.
+
+```
+digital-signature-system/
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Sidebar.jsx
+│   │   │   ├── StatCard.jsx
+│   │   │   ├── FileUpload.jsx
+│   │   │   ├── ResultPanel.jsx
+│   │   │   └── ConfirmDialog.jsx
+│   │   ├── pages/
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── GenerateSignature.jsx
+│   │   │   ├── VerifySignature.jsx
+│   │   │   ├── KeyManagement.jsx
+│   │   │   └── History.jsx
+│   │   ├── services/
+│   │   │   └── api.js
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── styles/
+│   ├── package.json
+│   └── vite.config.js
+│
+├── backend/
+│   ├── app.py
+│   ├── config.py
+│   ├── crypto_utils.py
+│   ├── database.py
+│   ├── routes/
+│   │   ├── keys.py
+│   │   ├── signing.py
+│   │   ├── verification.py
+│   │   ├── history.py
+│   │   └── dashboard.py
+│   ├── tests/
+│   │   ├── test_crypto.py
+│   │   ├── test_api.py
+│   │   └── test_history.py
+│   └── requirements.txt
+│
+├── .gitignore
+├── README.md
+└── PROJECT_PLAN.md
+```
+
+The agent may adjust filenames if necessary, but it must maintain clear separation between the frontend, API routes, cryptography, database access, and tests.
+
+## 10. Development phases and task sequence
+
+Agentix must follow the phases in order. Each phase has a completion gate; it should not proceed if a critical test in the current phase fails.
+
+1Phase 1 — Inspect and planHalf day
+
+Inspect the existing repository and installed tools
+
+Confirm the project directory and available Python and Node.js versions
+
+Create the implementation checklist and project structure
+
+Document assumptions and planned API contracts
+
+Completion gate
+
+The folder structure, stack, and implementation checklist are ready.
+
+2Phase 2 — Implement cryptography1 day
+
+Implement RSA-2048 key generation
+
+Implement PEM key export and import
+
+Implement encrypted private-key handling
+
+Implement RSA-PSS signing and SHA-256 verification
+
+Add unit tests for valid and invalid signatures
+
+Completion gate
+
+Cryptographic tests pass, including document tampering and wrong-key tests.
+
+3Phase 3 — Implement backend1–2 days
+
+4Phase 4 — Build frontend2 days
+
+5Phase 5 — Integration and security1–2 days
+
+6Phase 6 — Documentation and deliveryHalf to 1 day
+
+The durations are estimates. Agentix should prioritize correct cryptographic behavior over finishing within a fixed number of days.
+
+## 11. Detailed testing requirements
+
+Agentix must create automated tests and run them. It must not report tests as passed unless they have actually executed successfully.
+
+### Cryptography tests
+
+- Generate an RSA key pair and confirm both keys can be loaded.
+- Sign a TXT document and verify the signature successfully.
+- Sign a PDF and verify the original PDF successfully.
+- Modify a single byte in a signed document and confirm verification fails.
+- Use a different public key and confirm verification fails.
+- Supply an empty signature file and confirm verification fails safely.
+- Supply a malformed private key and confirm signing is rejected.
+- Supply a malformed public key and confirm verification is rejected.
+- Verify that signing and verification use the same RSA-PSS parameters.
+- Verify that a signature remains valid after downloading and re-uploading the document, signature, and public key.
+
+### API tests
+
+- Test every endpoint with valid inputs.
+- Test requests with missing required fields.
+- Test unsupported file types and oversized files.
+- Test corrupted uploads.
+- Confirm that invalid verification produces a controlled response.
+- Confirm that unexpected server errors do not reveal stack traces.
+- Confirm that history records are saved and retrieved correctly.
+- Confirm that clearing history requires the intended operation and updates dashboard statistics.
+
+### Frontend tests
+
+- Confirm that every navigation link opens the correct page.
+- Confirm that the forms show validation errors.
+- Confirm that successful signing provides a working signature download.
+- Confirm that the verification page displays the backend's actual result.
+- Confirm that loading, success, failure, and empty states work.
+- Confirm that the history filters and clear-history confirmation work.
+- Check the layout at desktop and mobile widths.
+
+## 12. Security and implementation boundaries
+
+Agentix must follow these constraints throughout development.
+
+- Private-key security: Do not persist private keys on the server by default. Never put them in logs, SQLite, Git, or browser local storage.
+- Key encryption: Support encrypted private-key exports using a password. Do not store the password.
+- File safety: Enforce a configurable upload limit, validate file types, use safe temporary-file handling, and remove temporary files after processing.
+- Cryptographic correctness: Use the `cryptography` library; do not write custom cryptographic primitives.
+- Backend authority: Only the backend can determine whether a signature is valid.
+- Database safety: Use parameterized queries and store only necessary metadata.
+- Frontend security: Avoid unsafe HTML rendering, and do not trust user-supplied filenames or status values.
+- CORS: Restrict allowed origins to the frontend during development and to the deployed frontend origin in production.
+- Deployment: Disable Flask debug mode in production and use HTTPS when deployed.
+- Scope control: Do not introduce authentication, user roles, digital certificates, blockchain, cloud key storage, email notifications, or third-party APIs.
+- Honest reporting: Report unfinished functionality, failed tests, and known limitations instead of marking them complete.
+
+One important limitation should be documented: this application verifies a signature against a supplied public key; it does not independently verify the real-world identity of the signer. Identity verification would require an additional trusted mechanism, such as a certificate infrastructure, which is outside the project scope.
+
+## 13. README and final deliverables
+
+The final repository must contain:
+
+- Project overview and problem statement.
+- Features and technology stack.
+- Architecture diagram.
+- Explanation of RSA, SHA-256, RSA-PSS, and public-private key usage.
+- Prerequisites and installation instructions for Windows.
+- Instructions for setting up the Python virtual environment.
+- Instructions for installing frontend dependencies.
+- Commands to start the backend and frontend.
+- API endpoint documentation.
+- Instructions for generating keys, signing documents, and verifying signatures.
+- Automated test commands and actual test results.
+- Screenshots of the dashboard and signing and verification workflows.
+- Security limitations and future improvements.
+- A `.gitignore` that excludes private keys, passwords, database files where appropriate, uploaded files, generated signatures, environment files, and temporary artifacts.
+
+The agent should also deliver a short final report containing:
+
+- Features completed.
+- Files and modules created.
+- Commands used to run the project.
+- Tests executed and their results.
+- Any known issues or incomplete tasks.
+
+## 14. Final execution prompt for Agentix
+
+Use the following as the main instruction to your Agentix agent after providing this plan.
+
+# Agentix Task: Build a Digital Signature Generation and Verification System
+
+## Objective
+
+Implement a complete, functional course project titled **Digital Signature Generation and Verification System** using the detailed project plan provided.
+
+The project must be moderately simple, well-structured, secure by design, and easy to demonstrate academically.
+
+## Mandatory technology stack
+
+- Frontend: React + Vite
+- Backend: Python + Flask
+- Cryptography: Python `cryptography`
+- Signature: RSA-2048 with RSA-PSS and SHA-256
+- Database: SQLite
+- API: REST endpoints
+- Testing: Pytest for backend tests
+
+## Required features
+
+1. RSA public-private key generation.
+2. Public and encrypted private-key downloads.
+3. PDF and TXT document upload.
+4. Digital signature generation.
+5. Downloadable `.sig` files.
+6. Signature verification using the original document and public key.
+7. Document-tampering detection.
+8. Dashboard with real statistics.
+9. Activity history stored in SQLite.
+10. Input validation, error handling, automated tests, and documentation.
+
+## Execution rules
+
+1. Inspect the existing repository before changing files. Preserve useful existing code.
+2. Create a phase-by-phase implementation checklist.
+3. Implement the cryptography module first and test it independently.
+4. Implement the Flask backend and database next.
+5. Build the React frontend after the backend works.
+6. Integrate the complete application and test the end-to-end workflow.
+7. Fix errors before moving to the next phase.
+8. Update the README and implementation checklist as work progresses.
+9. Keep the implementation within the defined scope.
+10. Never claim a test or feature succeeded without executing the relevant test.
+11. Do not overwrite unrelated files or delete existing user work.
+12. If a significant blocker occurs, explain the blocker and propose the smallest reasonable solution.
+
+## Security requirements
+
+- Never implement cryptographic algorithms manually.
+- Never log, expose, or persist private keys or passwords unnecessarily.
+- Use encrypted private-key exports.
+- Sign the original document bytes.
+- Use identical RSA-PSS parameters for signing and verification.
+- Validate uploads and enforce size limits.
+- Do not store document contents or private keys in the activity database.
+- Do not trust frontend-generated verification results.
+- Do not commit secrets or generated sensitive files to Git.
+
+## Completion requirements
+
+The project is complete only when:
+
+- The frontend and backend start successfully.
+- All required pages and API endpoints work.
+- A user can generate keys, sign a document, download its signature, and later verify it.
+- Modified documents and incorrect keys fail verification.
+- The activity history and dashboard statistics work.
+- Automated tests have been executed and their results are documented.
+- The README contains working setup and run instructions.
+- Known limitations and unfinished tasks are explicitly reported.
+
+Begin by inspecting the repository and presenting a concise implementation checklist. Then execute the plan phase by phase, running relevant tests and correcting failures as you go. Do not stop after producing a plan or mockup; implement the working application.
+
+Recommended approach: Give Agentix the full plan first, followed by the execution prompt. This provides both the detailed requirements and the instructions for how the agent should carry out the work.

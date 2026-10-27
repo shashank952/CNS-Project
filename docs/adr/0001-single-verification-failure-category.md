@@ -1,0 +1,3 @@
+# Report cryptographic verification failure as one category
+
+`plan.txt` asks the interface to distinguish a tampered document from an incorrect public key. RSA-PSS verification cannot make that distinction: both produce the same `InvalidSignature` failure, and the signature reveals nothing about which input was wrong. We therefore report one `verification_failed` outcome, with UI copy naming the possible causes, while keeping separate codes only for detectable problems (missing input, unsupported type, oversized file, malformed public key, malformed signature, malformed private key, wrong private-key password). This keeps the API honest; a later reader might otherwise "fix" the missing distinction by inventing an unsound heuristic.
