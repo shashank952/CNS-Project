@@ -5,6 +5,7 @@ from flask import Flask, jsonify
 from database import init_db
 from routes.keys import keys_bp
 from routes.signing import signing_bp
+from routes.verification import verification_bp
 
 
 def create_app(test_config=None):
@@ -14,6 +15,7 @@ def create_app(test_config=None):
         MAX_CONTENT_LENGTH=12 * 1024 * 1024,
         MAX_DOCUMENT_BYTES=10 * 1024 * 1024,
         MAX_KEY_BYTES=64 * 1024,
+        MAX_SIGNATURE_BYTES=64 * 1024,
     )
 
     if test_config:
@@ -24,6 +26,7 @@ def create_app(test_config=None):
 
     app.register_blueprint(keys_bp)
     app.register_blueprint(signing_bp)
+    app.register_blueprint(verification_bp)
 
     @app.get("/api/health")
     def health():

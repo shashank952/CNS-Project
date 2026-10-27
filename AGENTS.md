@@ -4,7 +4,7 @@
 
 - The workspace contains a React/Vite frontend and a Flask backend. `plan.txt` remains the authoritative product and security specification; `CONTEXT.md` is the domain glossary; `docs/adr/` records hard-to-reverse decisions.
 - Work is tracked as local markdown under `.scratch/digital-signature-system/`: `spec.md` is the buildable spec, and `issues/` holds tracer-bullet tickets with `Blocked by` edges. Work the unblocked frontier; do not skip a blocker.
-- Tickets 01 (walking skeleton), 02 (key generation), and 03 (signing) are complete. Later tickets add verification, history, and delivery. Do not replace real signing or verification with mocks.
+- Tickets 01 (walking skeleton), 02 (key generation), 03 (signing), and 04 (verification) are complete. Later tickets add history, the tamper demonstration, and delivery. Do not replace real signing or verification with mocks.
 
 ## Commands
 

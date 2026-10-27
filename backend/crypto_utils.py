@@ -25,6 +25,19 @@ def sign_document(private_key, document_bytes):
     )
 
 
+def verify_document(public_key, signature, document_bytes):
+    public_key.verify(
+        signature,
+        document_bytes,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH,
+        ),
+        hashes.SHA256(),
+    )
+    return True
+
+
 def serialize_private_key(private_key, password=None):
     encryption = (
         serialization.BestAvailableEncryption(password.encode("utf-8"))

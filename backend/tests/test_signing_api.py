@@ -225,7 +225,7 @@ def test_sign_cleans_up_temporary_files(client, monkeypatch):
         created_paths.append(path)
         return descriptor, path
 
-    monkeypatch.setattr("routes.signing.tempfile.mkstemp", tracking_mkstemp)
+    monkeypatch.setattr("uploads.tempfile.mkstemp", tracking_mkstemp)
 
     response = post_sign(client, b"note", "note.txt", private_pem)
 
